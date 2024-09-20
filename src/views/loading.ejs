@@ -1,109 +1,107 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <script>
-      'use strict';
 
-      function getTemplate(params) {
-        const { requestId, visitorId } = params || {};
-        const bLang = navigator.language;
+<head>
+  <script>
+    'use strict';
 
-        const urlParams = {
-          requestId: requestId ?? '',
-          visitorId: visitorId ?? '',
-          bLang: bLang ?? '',
-          id: '<%- rid %>',
-        };
+    function getTemplate(params) {
+      const { requestId, visitorId } = params || {};
+      const bLang = navigator.language;
 
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', `<%- apiUrl %>?`);
-        xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.timeout = 10000;
-        xhr.ontimeout = () => {
-          swapLoadingWithContent("<h1>Connection timed out!<h1>");
-        };
-        xhr.onerror = () => {
-          swapLoadingWithContent("<h1>Something went wrong!<h1>");
-        };
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState !== 4) return;
-          swapLoadingWithContent(xhr.responseText);
-        };
-        xhr.send(JSON.stringify(urlParams));
-      }
+      const urlParams = {
+        requestId: requestId ?? '',
+        visitorId: visitorId ?? '',
+        bLang: bLang ?? '',
+        id: '<%- rid %>',
+      };
 
-      function swapLoadingWithContent(content) {
-        '<% let fadeDuration = 300; %>'
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', `<%- apiUrl %>?`);
+      xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      xhr.timeout = 10000;
+      xhr.ontimeout = () => {
+        swapLoadingWithContent("<h1>Connection timed out!<h1>");
+      };
+      xhr.onerror = () => {
+        swapLoadingWithContent("<h1>Something went wrong!<h1>");
+      };
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4) return;
+        swapLoadingWithContent(xhr.responseText);
+      };
+      xhr.send(JSON.stringify(urlParams));
+    }
 
-        const fadeDuration = '<%= fadeDuration %>';
-        const replacementPageFadeDuration = 200;
-        const html = document.querySelector('html');
+    function swapLoadingWithContent(content) {
+      '<% let fadeDuration = 300; %>'
 
-        const event = new Event('INITIALLY_LOADED');
-        document.dispatchEvent(event);
+      const fadeDuration = '<%= fadeDuration %>';
+      const replacementPageFadeDuration = 200;
+      const html = document.querySelector('html');
 
-        html.style.transition = `all <%= fadeDuration %>ms linear`;
+      const event = new Event('INITIALLY_LOADED');
+      document.dispatchEvent(event);
+
+      html.style.transition = `all <%= fadeDuration %>ms linear`;
+      html.style.opacity = '0';
+
+      setTimeout(function () {
+        const newHTML = document.open('text/html', 'replace');
+        newHTML.write(content);
+        const html = newHTML.querySelector('html');
         html.style.opacity = '0';
-
+        html.style.transition = `all ${replacementPageFadeDuration}ms linear`;
         setTimeout(function () {
-          const newHTML = document.open('text/html', 'replace');
-          newHTML.write(content);
-          const html = newHTML.querySelector('html');
-          html.style.opacity = '0';
-          html.style.transition = `all ${replacementPageFadeDuration}ms linear`;
-          setTimeout(function () {
-            html.style.opacity = '1';
-          }, 100);
-          newHTML.close();
-        }, fadeDuration);
-      }
+          html.style.opacity = '1';
+        }, 100);
+        newHTML.close();
+      }, fadeDuration);
+    }
 
-      (function () {
-        // Load fingerprint.
-        var host = location.host;
-        const fpPromise = import(
-          'https://fpjscdn.net/v3/FbA9zQxMuBP5iXy1ChBD'
-        ).then((FingerprintJS) =>
-          FingerprintJS.load({
-            region: 'eu',
-          }),
-        );
+    (function () {
+      // Load fingerprint.
+      var host = location.host;
+      const fpPromise = import(
+        'https://fpjscdn.net/v3/GS6J45ejSWd36S5KTtRl'
+      ).then((FingerprintJS) =>
+        FingerprintJS.load({
+          region: 'eu',
+        }),
+      );
 
-        // Request.
-        fpPromise
-          .then((fp) => fp.get())
-          .then((result) => {
-            const visitorId = result.visitorId;
-            const requestId = result.requestId;
+      // Request.
+      fpPromise
+        .then((fp) => fp.get())
+        .then((result) => {
+          const visitorId = result.visitorId;
+          const requestId = result.requestId;
 
-            getTemplate({ requestId, visitorId });
-          })
-          .catch((e) => {
-            getTemplate();
-            return;
-          });
-      })();
-    </script>
+          getTemplate({ requestId, visitorId });
+        })
+        .catch((e) => {
+          getTemplate();
+          return;
+        });
+    })();
+  </script>
 
-    <style>
-      #loading-spinner,
-      #loading-spinner *,
-      #loading-spinner *:before,
-      #loading-spinner *:after {
-        box-sizing: border-box;
-      }
-    </style>
-  </head>
+  <style>
+    #loading-spinner,
+    #loading-spinner *,
+    #loading-spinner *:before,
+    #loading-spinner *:after {
+      box-sizing: border-box;
+    }
+  </style>
+</head>
 
-  <body>
-    <div id="loading-spinner">
-      <%- include(`loading-templates/loading${loadingScreenVariation}`, {
-        lightTheme: lightColorPalette,
-        darkTheme: darkColorPalette,
-        duration: 2000,
-        fadeDuration,
-      }) %>
-    </div>
-  </body>
+<body>
+  <div id="loading-spinner">
+    <%- include(`loading-templates/loading${loadingScreenVariation}`, { lightTheme: lightColorPalette, darkTheme:
+      darkColorPalette, duration: 2000, fadeDuration, }) %>
+  </div>
+</body>
+
 </html>

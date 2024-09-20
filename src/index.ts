@@ -86,7 +86,7 @@ const start = async () => {
 
   // Start the server
   try {
-    await fastify.listen({ port, host: '0.0.0.0' });
+    await fastify.listen({ port, host: process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost' });
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

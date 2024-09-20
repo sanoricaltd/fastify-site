@@ -25,7 +25,6 @@ export const view =
 
     try {
       const site = await fastify.getSite();
-
       if (!site.status || site.path !== pathname) {
         return reply.viewAsync(filePath);
       }

@@ -20,7 +20,7 @@ export const viewExists = (filename: string): boolean => {
 };
 
 export const getClientIp = (req: FastifyRequest): string => {
-  return (req.headers['http_client_ip'] as string) || (req.headers['http_x_forwarded_for'] as string) || (req.headers['remote_addr'] as string) || (req.id as string);
+  return (req.headers['http_client_ip'] as string) || (req.headers['http_x_forwarded_for'] as string) || (req.headers['remote_addr'] as string) || (req.ip as string);
 };
 
 export const getFileName = (importMeta: ImportMeta) => {

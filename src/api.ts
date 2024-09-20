@@ -7,7 +7,7 @@ import type { ILink, IVerify } from './types.js';
  * @returns Promise<{ status: boolean; path: string; }>
  */
 export const getSite = (fastify: FastifyInstance) => async (): Promise<{ status: boolean; path: string }> => {
-  const res = await fetch(`${fastify.config.API_URI}/v1/get-site/${fastify.config.SITE_CODE}`);
+  const res = await fetch(`${fastify.config.API_URI}/v1/site/${fastify.config.SITE_CODE}`);
   return await res.json();
 };
 
@@ -66,7 +66,7 @@ export const verify =
 export const getLink =
   (fastify: FastifyInstance) =>
   async ({ gclid = '', ip = '', visitorId = '', userAgent = '', campaignId = '' }: ILink) => {
-    const res = await fetch(`${fastify.config.API_URI}/v1/get-link`, {
+    const res = await fetch(`${fastify.config.API_URI}/v1/link`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
