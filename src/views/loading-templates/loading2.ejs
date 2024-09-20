@@ -1,0 +1,115 @@
+<style>
+  .container {
+    --background: <%= lightTheme.background %>;
+    --foreground: <%= lightTheme.foreground %>;
+    --accent: <%= lightTheme.accent %>;
+    background: var(--background);
+    color: var(--foreground);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .container {
+      <%=
+        typeof darkTheme !== 'undefined'
+          ?
+            `--background: ${darkTheme.background};`
+            + `--accent: ${darkTheme.accent};`
+            + `--foreground: ${darkTheme.foreground};`
+          : ''
+      %>
+    }
+  }
+
+  .counter {
+    position: relative;
+    font-size: 1rem;
+    animation: pulse 1.25s linear infinite;
+  }
+
+  @media (max-width: 992px) {
+    .counter {
+      font-size: 1.5rem;
+    }
+  }
+
+  .counter {
+    text-align: center;
+    width: 20em;
+    max-width: 90vw;
+  }
+  .counter div {
+    color: var(--foreground);
+    font-size: 4em;
+    margin-top: -.5em;
+  }
+  .counter hr {
+    background: var(--accent);
+    border: none;
+    height: .5em;
+    width: 0%;
+  }
+
+    @keyframes pulse {
+      0% {
+        scale: 1;
+      }
+      50% {
+        scale: 1.05;
+      }
+      100% {
+        scale: 1;
+      }
+    }
+</style>
+
+<div class="container">
+  <div class="counter">
+    <div>0%</div>
+    <hr />
+  </div>
+</div>
+
+<script>
+  const textCounter = document.querySelector('.counter > div');
+  const progressBar = document.querySelector('.counter > hr');
+  let percent = 0;
+  function updateProgress() {
+    requestAnimationFrame(() => {
+      textCounter.textContent = percent + '%';
+      progressBar.style.width = percent + '%';
+    })
+  }
+  let counterInterval = setInterval(function () {
+    percent++;
+    updateProgress();
+    if (percent == 99) {
+      clearInterval(counterInterval);
+    }
+  }, <%= duration / 100 %>);
+
+  document.addEventListener('INITIALLY_LOADED', function () {
+    if (percent === 100) return;
+    clearInterval(counterInterval);
+    const finalInterval = setInterval(
+      () => {
+        if (percent >= 100) {
+          clearInterval(finalInterval);
+        } else {
+          percent++;
+          updateProgress();
+        }
+      },
+      <%= typeof fadeDuration !== 'undefined' ? fadeDuration : '' %> / ((100 - percent) / 2),
+    );
+  });
+</script>

@@ -1,0 +1,180 @@
+<style>
+  .container {
+    --background: <%= lightTheme.background %>;
+    --foreground: <%= lightTheme.foreground %>;
+    --accent: <%= lightTheme.accent %>;
+    background: var(--background);
+    color: var(--foreground);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: monospace;
+    font-size: 1.2rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .container {
+      <%=
+        typeof darkTheme !== 'undefined'
+          ?
+            `--background: ${darkTheme.background};`
+            + `--accent: ${darkTheme.accent};`
+            + `--foreground: ${darkTheme.foreground};`
+          : ''
+      %>
+    }
+  }
+
+  @media (max-width: 992px) {
+    .container {
+      font-size: 1.8rem;
+    }
+  }
+
+  #loading-text {
+    display: block;
+    font-size: 2.4em;
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    left: 0; right: 0;
+    color: var(--foreground);
+    width: auto;
+    height: 1.5em;
+    line-height: 1.5em;
+    text-align: center;
+  }
+
+  #loading-content {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 13.3em;
+    height: 13.3em;
+    margin: -6.65em 0 0 -6.65em;
+    border: 0.3em solid transparent;
+  }
+
+  #loading-content:after {
+    content: "";
+    position: absolute;
+    border: 0.3em solid transparent;
+    left: 1.17em;
+    right: 1.17em;
+    top: 1.17em;
+    bottom: 1.17em;
+  }
+
+  #loading-content:before {
+    content: "";
+    position: absolute;
+    border: 0.3em solid transparent;
+    left: .39em;
+    right: .39em;
+    top: .39em;
+    bottom: .39em;
+  }
+
+  #loading-content {
+    border: 0.3em solid transparent;
+    border-top-color: <%= hexToRgba(lightTheme.accent, 0.3) %>;
+    border-bottom-color: <%= hexToRgba(lightTheme.accent, 0.3) %>;
+    border-radius: 50%;
+    -webkit-animation: loader 2s linear infinite;
+    -moz-animation: loader 2s linear infinite;
+    -o-animation: loader 2s linear infinite;
+    animation: loader 2s linear infinite;
+  }
+
+  #loading-content:before {
+    border: 0.3em solid transparent;
+    border-top-color: <%= hexToRgba(lightTheme.accent, 0.6) %>;
+    border-bottom-color: <%= hexToRgba(lightTheme.accent, 0.6) %>;
+    border-radius: 50%;
+    -webkit-animation: loader 3s linear infinite;
+      -moz-animation: loader 2s linear infinite;
+    -o-animation: loader 2s linear infinite;
+    animation: loader 3s linear infinite;
+  }
+
+  #loading-content:after {
+    border: 0.3em solid transparent;
+    border-top-color: <%= hexToRgba(lightTheme.accent, 0.8) %>;
+    border-bottom-color: <%= hexToRgba(lightTheme.accent, 0.8) %>;
+    border-radius: 50%;
+    -webkit-animation: loader 1.5s linear infinite;
+    animation: loader 1.5s linear infinite;
+      -moz-animation: loader 2s linear infinite;
+    -o-animation: loader 2s linear infinite;
+  }
+
+  @-webkit-keyframes loaders {
+    0% {
+      -webkit-transform: rotate(0deg);
+      -ms-transform: rotate(0deg);
+      transform: rotate(0deg);
+    }
+    100% {
+      -webkit-transform: rotate(360deg);
+      -ms-transform: rotate(360deg);
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes loader {
+    0% {
+      -webkit-transform: rotate(0deg);
+      -ms-transform: rotate(0deg);
+      transform: rotate(0deg);
+    }
+    100% {
+      -webkit-transform: rotate(360deg);
+      -ms-transform: rotate(360deg);
+      transform: rotate(360deg);
+    }
+  }
+</style>
+
+<div class="container">
+  <div id="loading-text"></div>
+  <div id="loading-content"></div>
+</div>
+
+<script>
+  const textCounter = document.querySelector('#loading-text');
+  let percent = 0;
+  function updateProgress() {
+    requestAnimationFrame(() => {
+      textCounter.textContent = percent + '%';
+    })
+  }
+  let counterInterval = setInterval(function () {
+    percent++;
+    updateProgress();
+    if (percent == 99) {
+      clearInterval(counterInterval);
+    }
+  }, <%= duration / 100 %>);
+
+  document.addEventListener('INITIALLY_LOADED', function () {
+    if (percent === 100) return;
+    clearInterval(counterInterval);
+    const finalInterval = setInterval(
+      () => {
+        if (percent >= 100) {
+          clearInterval(finalInterval);
+        } else {
+          percent++;
+          updateProgress();
+        }
+      },
+      <%= typeof fadeDuration !== 'undefined' ? fadeDuration : '' %> / ((100 - percent) / 2),
+    );
+  });
+</script>

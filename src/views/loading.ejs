@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      'use strict';
+
+      function getTemplate(params) {
+        const { requestId, visitorId } = params || {};
+        const bLang = navigator.language;
+
+        const urlParams = {
+          requestId: requestId ?? '',
+          visitorId: visitorId ?? '',
+          bLang: bLang ?? '',
+          id: '<%- rid %>',
+        };
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', `<%- apiUrl %>?`);
+        xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.timeout = 10000;
+        xhr.ontimeout = () => {
+          swapLoadingWithContent("<h1>Connection timed out!<h1>");
+        };
+        xhr.onerror = () => {
+          swapLoadingWithContent("<h1>Something went wrong!<h1>");
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState !== 4) return;
+          swapLoadingWithContent(xhr.responseText);
+        };
+        xhr.send(JSON.stringify(urlParams));
+      }
+
+      function swapLoadingWithContent(content) {
+        '<% let fadeDuration = 300; %>'
+
+        const fadeDuration = '<%= fadeDuration %>';
+        const replacementPageFadeDuration = 200;
+        const html = document.querySelector('html');
+
+        const event = new Event('INITIALLY_LOADED');
+        document.dispatchEvent(event);
+
+        html.style.transition = `all <%= fadeDuration %>ms linear`;
+        html.style.opacity = '0';
+
+        setTimeout(function () {
+          const newHTML = document.open('text/html', 'replace');
+          newHTML.write(content);
+          const html = newHTML.querySelector('html');
+          html.style.opacity = '0';
+          html.style.transition = `all ${replacementPageFadeDuration}ms linear`;
+          setTimeout(function () {
+            html.style.opacity = '1';
+          }, 100);
+          newHTML.close();
+        }, fadeDuration);
+      }
+
+      (function () {
+        // Load fingerprint.
+        var host = location.host;
+        const fpPromise = import(
+          'https://fpjscdn.net/v3/FbA9zQxMuBP5iXy1ChBD'
+        ).then((FingerprintJS) =>
+          FingerprintJS.load({
+            region: 'eu',
+          }),
+        );
+
+        // Request.
+        fpPromise
+          .then((fp) => fp.get())
+          .then((result) => {
+            const visitorId = result.visitorId;
+            const requestId = result.requestId;
+
+            getTemplate({ requestId, visitorId });
+          })
+          .catch((e) => {
+            getTemplate();
+            return;
+          });
+      })();
+    </script>
+
+    <style>
+      #loading-spinner,
+      #loading-spinner *,
+      #loading-spinner *:before,
+      #loading-spinner *:after {
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="loading-spinner">
+      <%- include(`loading-templates/loading${loadingScreenVariation}`, {
+        lightTheme: lightColorPalette,
+        darkTheme: darkColorPalette,
+        duration: 2000,
+        fadeDuration,
+      }) %>
+    </div>
+  </body>
+</html>

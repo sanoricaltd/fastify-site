@@ -1,0 +1,125 @@
+<style>
+  .container {
+    --background: <%= lightTheme.background %>;
+    --foreground: <%= lightTheme.foreground %>;
+    --accent: <%= lightTheme.accent %>;
+    --shadowFrom: <%= hexToRgba(lightTheme.accent, 0.5) %>;
+    --shadowTo: <%= hexToRgba(lightTheme.accent, 0) %>;
+    background: var(--background);
+    color: var(--foreground);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: monospace;
+    font-size: 1rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .container {
+      <%=
+        typeof darkTheme !== 'undefined'
+          ?
+            `--background: ${darkTheme.background};`
+            + `--accent: ${darkTheme.accent};`
+            + `--foreground: ${darkTheme.foreground};`
+            + `--shadowFrom: ${hexToRgba(darkTheme.accent, 0.5)};`
+            + `--shadowTo: ${hexToRgba(darkTheme.accent, 0)};`
+          : ''
+      %>
+    }
+  }
+
+  @media (max-width: 992px) {
+    .container {
+      font-size: 1.5rem;
+    }
+  }
+
+  @keyframes pulse_animation {
+    0% { box-shadow: 0 0 0 0 var(--shadowFrom) }
+    100% { box-shadow: 0 0 0 12.5em var(--shadowTo) }
+  }
+
+  .pulse-wrapper {
+    font-size: .8em;
+    width: 13em;
+    height: 13em;
+    position: relative;
+  }
+  .pulse {
+    position: absolute;
+    margin-top: 50%;
+    margin-left: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    width: 3.2em;
+    height: 3.2em;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse_animation 1.3s infinite;
+  }
+  .pulse:nth-child(2) {
+    animation-delay: 0.3s;
+  }
+  .pulse:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+
+  .counter {
+    font-size: 4em;
+    font-weight: 800;
+    color: var(--foreground);
+    user-select: none;
+    position: absolute;
+    left: 12%; right: 0;
+    bottom: -10%;
+    text-align: center;
+  }
+</style>
+
+<div class="container">
+  <div class="pulse-wrapper">
+    <div class="pulse"></div>
+    <div class="pulse"></div>
+    <div class="pulse"></div>
+    <div class="counter"></div>
+  </div>
+</div>
+
+<script>
+  const textCounter = document.querySelector('.counter');
+  let percent = 0;
+  function updateProgress() {
+    requestAnimationFrame(() => {
+      textCounter.textContent = percent + '%';
+    })
+  }
+  let counterInterval = setInterval(function () {
+    percent++;
+    updateProgress();
+    if (percent == 99) {
+      clearInterval(counterInterval);
+    }
+  }, <%= duration / 100 %>);
+
+  document.addEventListener('INITIALLY_LOADED', function () {
+    if (percent === 100) return;
+    clearInterval(counterInterval);
+    const finalInterval = setInterval(
+      () => {
+        if (percent >= 100) {
+          clearInterval(finalInterval);
+        } else {
+          percent++;
+          updateProgress();
+        }
+      },
+      <%= typeof fadeDuration !== 'undefined' ? fadeDuration : '' %> / ((100 - percent) / 2),
+    );
+  });
+</script>

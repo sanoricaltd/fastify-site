@@ -1,0 +1,124 @@
+<style>
+  .container {
+    --background: <%= lightTheme.background %>;
+    --foreground: <%= lightTheme.foreground %>;
+    --accent: <%= lightTheme.accent %>;
+    background: var(--background);
+    color: var(--foreground);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: monospace;
+    font-size: 1rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .container {
+      <%=
+        typeof darkTheme !== 'undefined'
+          ?
+            `--background: ${darkTheme.background};`
+            + `--accent: ${darkTheme.accent};`
+            + `--foreground: ${darkTheme.foreground};`
+          : ''
+      %>
+    }
+  }
+
+  @media (max-width: 992px) {
+    .container {
+      font-size: 1.5rem;
+    }
+  }
+
+  .counter {
+    width: 18em;
+    height: 10em;
+    border-radius: .75em;
+    overflow:hidden;
+    background-color: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 .75em var(--accent);
+    animation: pulse 1s linear infinite;
+    position: relative;
+  }
+  
+  .loader {
+    font-size: 4em;
+    font-weight: 800;
+    color: var(--foreground);
+    user-select: none;
+  }
+
+  .progress-bg {
+    position: absolute;
+    top: 0; bottom: 0;
+    left:0; right: 100%;
+    background: var(--accent);
+    z-index: -1;
+    opacity: 0.4;
+    transition: right linear 0.1s;
+  }
+
+  @keyframes pulse {
+    0% {
+      scale: 1;
+    }
+    50% {
+      scale: 1.02;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+</style>
+
+<div class="container">
+  <div class="counter">
+    <div class="progress-bg"></div>
+    <h1 class="loader"></h1>
+  </div>
+</div>
+
+<script>
+  const textCounter = document.querySelector('.loader');
+  const progressBar = document.querySelector('.progress-bg');
+  let percent = 0;
+  function updateProgress() {
+    requestAnimationFrame(() => {
+      textCounter.textContent = percent + '%';
+      progressBar.style.right = `${100 - percent}%`;
+    })
+  }
+  let counterInterval = setInterval(function () {
+    percent++;
+    updateProgress();
+    if (percent == 99) {
+      clearInterval(counterInterval);
+    }
+  }, <%= duration / 100 %>);
+
+  document.addEventListener('INITIALLY_LOADED', function () {
+    if (percent === 100) return;
+    clearInterval(counterInterval);
+    const finalInterval = setInterval(
+      () => {
+        if (percent >= 100) {
+          clearInterval(finalInterval);
+        } else {
+          percent++;
+          updateProgress();
+        }
+      },
+      <%= typeof fadeDuration !== 'undefined' ? fadeDuration : '' %> / ((100 - percent) / 2),
+    );
+  });
+</script>

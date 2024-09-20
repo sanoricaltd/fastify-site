@@ -1,0 +1,188 @@
+<style>
+  .container {
+    --background: <%= lightTheme.background %>;
+    --foreground: <%= lightTheme.foreground %>;
+    --accent: <%= lightTheme.accent %>;
+    background: var(--background);
+    color: var(--foreground);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .container {
+      <%=
+        typeof darkTheme !== 'undefined'
+          ?
+            `--background: ${darkTheme.background};`
+            + `--accent: ${darkTheme.accent};`
+            + `--foreground: ${darkTheme.foreground};`
+          : ''
+      %>
+    }
+  }
+
+  .progress-ring {
+    position: relative;
+    font-size: 1rem;
+    animation: pulse 1.25s linear infinite;
+  }
+
+  @media (max-width: 992px) {
+    .progress-ring {
+      font-size: 1.5rem;
+    }
+  }
+
+  .circular-progress {
+    --size: 11.25em;
+    --half-size: calc(var(--size) / 2);
+    --stroke-width: 1em;
+    --radius: calc((var(--size) - var(--stroke-width)) / 2);
+    --circumference: calc(var(--radius) * pi * 2);
+    --dash: calc((var(--progress) * var(--circumference)) / 100);
+    width: var(--size);
+    height: var(--size);
+  }
+
+  .circular-progress.running {
+    animation: progress-animation <%= duration %>ms ease-in-out 0s 1 forwards;
+  }
+
+  .circular-progress circle {
+    cx: var(--half-size);
+    cy: var(--half-size);
+    r: var(--radius);
+    stroke-width: var(--stroke-width);
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .circular-progress circle.bg {
+    stroke: var(--accent);
+  }
+
+  .circular-progress circle.fg {
+    transform: rotate(-90deg);
+    transform-origin: var(--half-size) var(--half-size);
+    stroke-dasharray: var(--dash) calc(var(--circumference) - var(--dash));
+    stroke: currentColor;
+    transition: stroke-dasharray 0.2s linear 0s;
+  }
+
+  .circular-progress.running circle.fg {
+    transition: none;
+  }
+
+  @property --progress {
+    syntax: '<number>';
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @keyframes progress-animation {
+    from {
+      --progress: 0;
+    }
+    to {
+      --progress: 97;
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      scale: 1;
+      rotate: 0deg;
+    }
+    25% {
+      rotate: 3deg;
+    }
+    50% {
+      scale: 1.1;
+      rotate: 0deg;
+    }
+    75% {
+      rotate: -3deg;
+    }
+    100% {
+      scale: 1;
+      rotate: 0deg;
+    }
+  }
+
+  .progress-text {
+    position: absolute;
+    inset: 0;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2.4em;
+    line-height: 1em;
+    height: 1em;
+    text-align: center;
+    color: currentColor;
+    font-weight: 600;
+    user-select: none;
+  }
+</style>
+
+<div class="container">
+  <div class="progress-ring">
+    <svg class="circular-progress running">
+      <circle class="bg"></circle>
+      <circle class="fg"></circle>
+    </svg>
+    <div class="progress-text">0%</div>
+  </div>
+</div>
+
+<script>
+  function updateProgress(percent) {
+    const circle = document.querySelector('.progress-ring circle');
+    const text = document.querySelector('.progress-text');
+    text.textContent = `${percent}%`;
+  }
+
+  let percent = 1;
+  const interval = setInterval(() => {
+    if (percent >= 100) {
+      clearInterval(interval);
+    } else {
+      percent = percent + 2 > 99 ? 99 : percent + 2;
+      updateProgress(percent);
+    }
+  }, <%= duration / 50 %>);
+
+  document.addEventListener('INITIALLY_LOADED', function () {
+    if (percent === 100) return;
+    clearInterval(interval);
+    const progressBar = document.querySelector('.circular-progress');
+    const currentProgressProperty =
+      getComputedStyle(progressBar).getPropertyValue('--progress');
+    progressBar.classList.remove('running');
+    progressBar.style.setProperty('--progress', currentProgressProperty);
+    requestAnimationFrame(() => {
+      progressBar.style.setProperty('--progress', 100);
+    });
+    const finalInterval = setInterval(
+      () => {
+        if (percent >= 100) {
+          clearInterval(finalInterval);
+        } else {
+          percent = percent + 2 > 100 ? 100 : percent + 2;
+          updateProgress(percent);
+        }
+      },
+      <%= typeof fadeDuration !== 'undefined' ? fadeDuration : '' %> / ((100 - percent) / 2),
+    );
+  });
+</script>
