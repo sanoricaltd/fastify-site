@@ -24,4 +24,17 @@ export default fastifyPlugin(async (fastify) => {
     );
     done();
   });
+  fastify.addHook('preHandler', async (req, reply) => {
+    const proto = req.headers['x-forwarded-proto'] || 'http';
+    const isHttps = proto.includes('https');
+
+    if (!isHttps) {
+      const { method, url } = req;
+
+      if (method && ['GET', 'HEAD'].includes(method)) {
+        const host = req.headers.host || req.hostname;
+        reply.redirect(`https://${host}${url}`, 301);
+      }
+    }
+  });
 });
