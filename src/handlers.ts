@@ -38,7 +38,8 @@ export const view =
         reply.header('Set-Cookie', cookie);
       }
 
-      const apiUrl = `${req.protocol}://${req.hostname}/api`;
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+      const apiUrl = `${protocol}://${req.hostname}/api`;
 
       if (!req.cookies._vid) {
         return reply.code(StatusCodes.OK).viewAsync('loading', { rid: req.id, apiUrl });
