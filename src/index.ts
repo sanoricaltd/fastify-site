@@ -23,6 +23,7 @@ const start = async () => {
 
   const fastify = Fastify({
     logger: process.env.NODE_ENV !== 'production',
+    trustProxy: true,
     genReqId: () => nanoid(12),
   });
 
