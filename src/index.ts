@@ -1,9 +1,9 @@
-// import './instrument.js';
+import './instrument.js';
 import Fastify from 'fastify';
 import { fastifyView } from '@fastify/view';
 import { fastifyStatic } from '@fastify/static';
 import { fastifyHelmet } from '@fastify/helmet';
-// import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/node';
 import { fastifyCookie } from '@fastify/cookie';
 import { fastifyMultipart } from '@fastify/multipart';
 import ejs from 'ejs';
@@ -15,6 +15,7 @@ import { nanoid } from 'nanoid';
 import { fastifyCors } from '@fastify/cors';
 import { fastifyAutoload } from '@fastify/autoload';
 import hexToRgba from 'hex-to-rgba';
+import crypto from 'crypto';
 
 const port = Number(process.env.PORT) || 8080;
 
@@ -23,8 +24,9 @@ const start = async () => {
 
   const fastify = Fastify({
     logger: process.env.NODE_ENV !== 'production',
-    genReqId: () => nanoid(12),
+    genReqId: () => nanoid(20),
     trustProxy: true,
+    disableRequestLogging: true,
   });
 
   await fastify.register(fastifyEnv, evnOptions);
@@ -33,10 +35,31 @@ const start = async () => {
     origin: process.env.NODE_ENV === 'production' ? [`https://${process.env.DOMAIN}`, `https://www.${process.env.DOMAIN}`] : '*',
   });
 
+  let nonce: string;
+  fastify.addHook('onRequest', (_req, reply, done) => {
+    nonce = crypto.randomBytes(16).toString('base64');
+    reply.cspNonce = {
+      script: nonce,
+      style: '', // not enforcing it through helmet
+    };
+    done();
+  });
+
   fastify.register(fastifyHelmet, {
-    contentSecurityPolicy: false,
     referrerPolicy: {
       policy: ['origin', 'unsafe-url'],
+    },
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", () => `'nonce-${nonce}'`],
+        connectSrc: ["'self'", '*.fpjs.io'],
+        frameSrc: [
+          "'self'",
+          'https://*.youtube.com', // Allow framing from YouTube
+          'https://*.youtube-nocookie.com', // Allow nocookie option for privacy
+          'https://*.playngonetwork.com', // Allow framing from playngo
+        ],
+      },
     },
   });
 
@@ -46,7 +69,7 @@ const start = async () => {
 
   fastify.register(fastifyMultipart);
 
-  // Sentry.setupFastifyErrorHandler(fastify);
+  Sentry.setupFastifyErrorHandler(fastify);
 
   if (!viewExists(`sites/${fastify.config.SITE_CODE}/views/index`)) {
     fastify.log.error(`EJS templates for this site code does not exist. (\`views/sites/${fastify.config.SITE_CODE}/views/index.ejs\`)`);

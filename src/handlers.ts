@@ -1,173 +1,128 @@
 import { fastifyCookie } from '@fastify/cookie';
 import { StatusCodes, ReasonPhrases } from 'http-status-codes';
-// import * as Sentry from '@sentry/node';
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import * as Sentry from '@sentry/node';
+import type { RouteHandlerMethod } from 'fastify';
+import type { TRouteHandlerMethod, IRouteApi, IRouteTransport } from './types.js';
+import { addNonce } from './utils.js';
 
 /**
  * View handler.
  */
-export const view =
-  (fastify: FastifyInstance) =>
-  async (
-    req: FastifyRequest<{
-      Querystring: { gclid?: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const { pathname, filename } = fastify.parseUrl(req.raw.url);
-    const filePath = `sites/${fastify.config.SITE_CODE}/views${filename}`;
-    const indexPath = `sites/${fastify.config.SITE_CODE}/views/index`;
-    const exists = fastify.viewExists(filePath);
-
-    if (!exists) {
-      return reply.code(StatusCodes.NOT_FOUND).send(ReasonPhrases.NOT_FOUND);
-    }
-
-    try {
-      const site = await fastify.getSite();
-      if (!site.status || site.path !== pathname) {
-        return reply.viewAsync(filePath);
-      }
-
-      if (req.query.gclid) {
-        const cookie = fastifyCookie.serialize('_cid', req.query.gclid, {
-          maxAge: 604_800,
-          httpOnly: true,
-        });
-
-        reply.header('Set-Cookie', cookie);
-      }
-
-      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-      const apiUrl = `${protocol}://${req.hostname}/api`;
-
-      if (!req.cookies._vid) {
-        return reply.code(StatusCodes.OK).viewAsync('loading', { rid: req.id, apiUrl });
-      }
-
-      const { verified, data } = await fastify.verify({
-        shallow: true,
-        visitorId: req.cookies._vid,
-        referer: req.headers.referer,
-        gclid: req.query.gclid,
-        ip: fastify.getClientIp(req),
-        userAgent: req.headers['user-agent'],
-        requestUrl: new URL(req.url, `https://${req.headers.host}`).toString(),
-      });
-
-      if (!verified) return reply.viewAsync(indexPath);
-
-      return reply.code(StatusCodes.OK).type('text/html').send(data);
-    } catch (error) {
-      fastify.log.error(error);
-      // Sentry.captureException(error);
-      return reply.code(StatusCodes.OK).viewAsync(filePath);
-    }
-  };
+export const view: RouteHandlerMethod = async (_req, reply) => {
+  const { filePath } = reply.locals;
+  return reply.code(StatusCodes.OK).viewAsync(filePath, { nonce: reply.cspNonce });
+};
 
 /**
  * API handler.
  */
-export const api =
-  (fastify: FastifyInstance) =>
-  async (
-    req: FastifyRequest<{
-      Body: {
-        id?: string;
-        requestId?: string;
-        visitorId?: string;
-        bLang?: string;
-      };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const { requestId, visitorId, bLang, id } = req.body;
-    const indexPath = `sites/${fastify.config.SITE_CODE}/views/index`;
+export const api: TRouteHandlerMethod<IRouteApi> = async (req, reply) => {
+  const { requestId, visitorId, bLang, id, nonce: previousHTTPRequestNonce } = req.body;
+  console.log(req.body);
+  const fastify = req.server;
+  const indexPath = `sites/${fastify.config.SITE_CODE}/views/index`;
 
+  if (!id || !requestId || !visitorId || !bLang) {
     // TODO: We need to find out some how if we don't get this information, maybe add Sentry here.
-    if (!id || !requestId || !visitorId || !bLang) {
-      // return reply.code(StatusCodes.FORBIDDEN).header('connection', 'close').send(ReasonPhrases.FORBIDDEN);
+    // Show the safe page when parameters are not sent correctly.
+    // Most probably because the fingerprint script was blocked by the client
+    return reply
+      .code(StatusCodes.OK)
+      .type('text/html')
+      .viewAsync(indexPath, { nonce: { script: previousHTTPRequestNonce, style: '' } });
+  }
 
-      // Show the cloak page when parameters are not sent correctly.
-      // Most probably because the fingerprint script was blocked by the client
-      return reply.code(StatusCodes.OK).type('text/html').viewAsync(indexPath);
-    }
+  const request = fastify.cache.get<{ referer: string; url: string }>(id);
 
-    const request = fastify.cache.get<{ referer: string; url: string }>(id);
+  if (!request) {
+    // TODO: We need to find out some how if we don't get this information, maybe add Sentry here.
+    // Show the safe page when parameters are not sent correctly.
+    // Most probably because the fingerprint script was blocked by the client
+    return reply
+      .code(StatusCodes.OK)
+      .type('text/html')
+      .viewAsync(indexPath, { nonce: { script: previousHTTPRequestNonce, style: '' } });
+  }
 
-    if (!request) {
-      // return reply.code(StatusCodes.FORBIDDEN).header('connection', 'close').send(ReasonPhrases.FORBIDDEN);
+  const cookie = fastifyCookie.serialize('_vid', visitorId, {
+    maxAge: 604_800,
+    httpOnly: true,
+  });
 
-      // Show the cloak page when parameters are not sent correctly.
-      // Most probably because the fingerprint script was blocked by the client
-      return reply.code(StatusCodes.OK).type('text/html').viewAsync(indexPath);
-    }
-
-    const cookie = fastifyCookie.serialize('_vid', visitorId, {
-      maxAge: 604_800,
-      httpOnly: true,
+  try {
+    const { verified, data } = await fastify.verify({
+      state: reply.siteState,
+      visitorId,
+      requestId,
+      bLang,
+      referer: request.referer,
+      gclid: req.cookies._cid,
+      ip: reply.clientIp,
+      userAgent: req.headers['user-agent'],
+      requestUrl: request.url,
     });
 
-    try {
-      const res = await fastify.verify({
-        visitorId,
-        requestId,
-        bLang,
-        referer: request.referer,
-        gclid: req.cookies._cid,
-        ip: fastify.getClientIp(req),
-        userAgent: req.headers['user-agent'],
-        requestUrl: request.url,
-      });
+    reply.code(StatusCodes.OK).type('text/html').header('Set-Cookie', cookie);
 
-      if (res.verified) return reply.code(StatusCodes.OK).type('text/html').header('Set-Cookie', cookie).send(res.data);
+    if (!verified) return reply.viewAsync(indexPath, { nonce: { script: previousHTTPRequestNonce, style: '' } });
 
-      return reply.code(StatusCodes.OK).type('text/html').viewAsync(indexPath);
-    } catch (error) {
-      // Sentry.captureException(error);
-      fastify.log.error(error);
-      return reply.code(StatusCodes.OK).type('text/html').viewAsync(indexPath);
-    }
-  };
+    const html = addNonce(data, previousHTTPRequestNonce);
+
+    return reply.send(html);
+  } catch (error) {
+    console.log(error);
+    Sentry.captureException(error);
+    fastify.log.error(error);
+    return reply
+      .code(StatusCodes.OK)
+      .type('text/html')
+      .view(indexPath, { nonce: { script: previousHTTPRequestNonce, style: '' } });
+  }
+};
 
 /**
  * Transport handler.
  */
-export const transport =
-  (fastify: FastifyInstance) =>
-  async (
-    req: FastifyRequest<{
-      Params: { id?: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const { id } = req.params;
+export const transport: TRouteHandlerMethod<IRouteTransport> = async (req, reply) => {
+  const { id } = req.params;
+  const fastify = req.server;
 
-    if (!id || !req.cookies._cid || !req.cookies._vid) {
-      return reply.code(StatusCodes.NOT_FOUND).send(ReasonPhrases.NOT_FOUND);
+  const indexPath = `sites/${fastify.config.SITE_CODE}/views/index`;
+
+  if (!id || !req.cookies._vid) {
+    return reply.code(StatusCodes.NOT_FOUND).send(ReasonPhrases.NOT_FOUND);
+  }
+
+  try {
+    const { success, data } = await fastify.getLink({
+      campaignId: id,
+      gclid: req.cookies._cid || '',
+      visitorId: req.cookies._vid,
+      ip: reply.clientIp,
+      userAgent: req.headers['user-agent'],
+    });
+
+    if (!success) {
+      return reply.code(StatusCodes.OK).viewAsync(indexPath, { nonce: reply.cspNonce });
     }
 
-    try {
-      const { success, data } = await fastify.getLink({
-        campaignId: id,
-        gclid: req.cookies._cid,
-        visitorId: req.cookies._vid,
-        ip: fastify.getClientIp(req),
-        userAgent: req.headers['user-agent'],
-      });
-
-      if (!success) return reply.code(StatusCodes.NOT_FOUND).send(ReasonPhrases.NOT_FOUND);
-
-      return reply.redirect(data);
-    } catch (error) {
-      // Sentry.captureException(error);
-      return reply.code(StatusCodes.INTERNAL_SERVER_ERROR).send(ReasonPhrases.INTERNAL_SERVER_ERROR);
-    }
-  };
+    return reply.redirect(data);
+  } catch (error) {
+    Sentry.captureException(error);
+    return reply.code(StatusCodes.OK).viewAsync(indexPath, { nonce: reply.cspNonce });
+  }
+};
 
 /**
- * Form process.
+ * Process form handler.
  */
-export const handleForm = () => async (_req: FastifyRequest, reply: FastifyReply) => {
+export const handleForm: RouteHandlerMethod = async (_req, reply) => {
   return reply.send({ success: true });
+};
+
+/**
+ * Robots handler.
+ */
+export const robots: RouteHandlerMethod = async (req, reply) => {
+  reply.type('text/plain').send(`User-agent: Googlebot\nUser-agent: AdsBot-Googlebot\nAllow: /\nSitemap: https://${req.hostname}/sitemap.xml`);
 };

@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <script>
+  <script nonce="<%= nonce.script %>">
     'use strict';
 
     function getTemplate(params) {
@@ -14,6 +14,7 @@
         visitorId: visitorId ?? '',
         bLang: bLang ?? '',
         id: '<%- rid %>',
+        nonce: '<%= nonce.script %>',
       };
 
       var xhr = new XMLHttpRequest();
@@ -64,7 +65,7 @@
       // Load fingerprint.
       var host = location.host;
       const fpPromise = import(
-        'https://fpjscdn.net/v3/GS6J45ejSWd36S5KTtRl'
+        'https://fpjscdn.net/v3/<%- key %>'
       ).then((FingerprintJS) =>
         FingerprintJS.load({
           region: 'eu',

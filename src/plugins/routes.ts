@@ -1,12 +1,21 @@
 import { fastifyPlugin } from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
-import { view, api, transport, handleForm } from '../handlers.js';
+import { view, api, transport, handleForm, robots } from '../handlers.js';
+import { cloakDefault } from '../hooks/cloak-default.hook.js';
+import { cloakHybrid } from '../hooks/cloak-hybrid.hook.js';
+import { validate } from '../hooks/validate.hook.js';
+import { state } from '../hooks/state.hook.js';
+import { setClickId } from '../hooks/set-cid.hook.js';
+import type { IRouteView } from '../types.js';
+import { cloakGclid } from '../hooks/cloak-gclid.hook.js';
 
 const getView = async (fastify: FastifyInstance) => {
-  fastify.route({
+  fastify.route<IRouteView>({
     method: 'GET',
     url: '/*',
-    handler: view(fastify),
+    preValidation: [validate, state],
+    preHandler: [setClickId, cloakDefault, cloakGclid, cloakHybrid],
+    handler: view,
   });
 };
 
@@ -14,7 +23,7 @@ const postApi = async (fastify: FastifyInstance) => {
   fastify.route({
     method: 'POST',
     url: '/api',
-    handler: api(fastify),
+    handler: api,
   });
 };
 
@@ -22,7 +31,7 @@ const getTransport = async (fastify: FastifyInstance) => {
   fastify.route({
     method: 'GET',
     url: '/go/:id',
-    handler: transport(fastify),
+    handler: transport,
   });
 };
 
@@ -38,9 +47,7 @@ const getRobots = async (fastify: FastifyInstance) => {
   fastify.route({
     method: 'GET',
     url: '/robots.txt',
-    handler: async (req, reply) => {
-      reply.type('text/plain').send(`User-agent: Googlebot\nDisallow: /nogooglebot/\n\nUser-agent: *\nAllow: /\n\nSitemap: https://${req.hostname}/sitemap.xml`);
-    },
+    handler: robots,
   });
 };
 

@@ -6,13 +6,16 @@ import type { ILink, IVerify } from './types.js';
  * @param fastify - The Fastify instance.
  * @returns Promise<{ status: boolean; path: string; }>
  */
-export const getSite = (fastify: FastifyInstance) => async (): Promise<{ status: boolean; path: string }> => {
-  const res = await fetch(`${fastify.config.API_URI}/v1/site/${fastify.config.SITE_CODE}`);
+export const getSite = (fastify: FastifyInstance) => async (): Promise<{ status: boolean; path: string; state: string }> => {
+  const res = await fetch(`${fastify.config.API_URI}/v1/site/${fastify.config.SITE_CODE}`, {
+    signal: AbortSignal.timeout(5000),
+  });
   return await res.json();
 };
 
 /**
  * Verifies the visitor.
+ * @param state - The site state.
  * @param fastify - The Fastify instance.
  * @param visitorId - The visitor ID.
  * @param requestId - The request ID.
@@ -29,6 +32,7 @@ export const verify =
   (fastify: FastifyInstance) =>
   async ({ visitorId, requestId = '', bLang = '', shallow = false, referer = '', gclid = '', ip = '', userAgent = '', requestUrl = '' }: IVerify): Promise<{ verified: boolean; data: string }> => {
     const res = await fetch(`${fastify.config.API_URI}/v1/verify`, {
+      signal: AbortSignal.timeout(10000),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,12 +65,12 @@ export const verify =
  * @param campaignId - The campaign ID.
  * @returns Promise<{ success: boolean; data: string }>
  * @throws {Error} - Throws an error if the request fails.
- * @throws {Error} - Throws an error if the response is not JSON.
  */
 export const getLink =
   (fastify: FastifyInstance) =>
   async ({ gclid = '', ip = '', visitorId = '', userAgent = '', campaignId = '' }: ILink) => {
     const res = await fetch(`${fastify.config.API_URI}/v1/link`, {
+      signal: AbortSignal.timeout(5000),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
