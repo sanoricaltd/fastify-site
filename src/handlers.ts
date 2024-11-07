@@ -18,7 +18,6 @@ export const view: RouteHandlerMethod = async (_req, reply) => {
  */
 export const api: TRouteHandlerMethod<IRouteApi> = async (req, reply) => {
   const { requestId, visitorId, bLang, id, nonce: previousHTTPRequestNonce } = req.body;
-  console.log(req.body);
   const fastify = req.server;
   const indexPath = `sites/${fastify.config.SITE_CODE}/views/index`;
 
